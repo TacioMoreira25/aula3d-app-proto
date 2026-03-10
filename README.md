@@ -19,7 +19,7 @@ Você pode executar o projeto de duas formas: diretamente pelo editor ou utiliza
 
 ### Pelo Editor Godot
 1. Abra o **Godot Engine (versão .NET)**.
-2. Clique em `Importar` e selecione o arquivo `project.godot` contido na pasta raiz deste projeto (`/home/marcos/Projects/aula-3d/project.godot`).
+2. Clique em `Importar` e selecione o arquivo `project.godot` contido na pasta raiz deste projeto (`aula-3d/project.godot`).
 3. Com o projeto aberto, clique no ícone **Build** (ícone de martelo no canto superior direito) para compilar os scripts do .NET.
 4. Após o build ter sucesso, clique no ícone de Play (ou pressione `F5`) para rodar o projeto.
 
