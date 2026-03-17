@@ -12,7 +12,7 @@ namespace Aula3D.VisionCore
     /// Única classe pública acessada pelo Godot (Dupla 2).
     /// Esconde toda dependência do OpenCV e orquestra o pipeline PDI:
     /// FiltroEspacial → ExtratorHu → ClassificadorDeGestos.
-    /// 
+    ///
     /// Implementa <see cref="IGestureProvider"/> — o contrato acordado entre as duplas.
     /// </summary>
     public class GestorDeVisaoFacade : IGestureProvider, IDisposable
@@ -28,10 +28,15 @@ namespace Aula3D.VisionCore
                     {
                         string cwd = System.IO.Directory.GetCurrentDirectory();
                         string customPath = System.IO.Path.Combine(cwd, "libOpenCvSharpExtern.so");
-                        
+
                         if (System.IO.File.Exists(customPath))
                         {
                             return NativeLibrary.Load(customPath);
+                        }
+                        string altPath = "/usr/local/lib/libOpenCvSharpExtern.so";
+                        if (System.IO.File.Exists(altPath))
+                        {
+                            return NativeLibrary.Load(altPath);
                         }
                     }
                     return IntPtr.Zero;
@@ -50,7 +55,7 @@ namespace Aula3D.VisionCore
         public bool  IsRunning  { get; private set; }
         public bool  IsHandOpen => GestoDetectado;
         public float Z          { get; private set; }       // estimativa de profundidade por área
-        public byte[] FrameBuffer { get; private set; }
+        public byte[]? FrameBuffer { get; private set; }
 
         private CancellationTokenSource? _cts;
         private Task?                    _visionTask;
@@ -114,7 +119,7 @@ namespace Aula3D.VisionCore
 
                     string textoEstado = GestoDetectado ? "ABERTA (Rotacao)" : "FECHADA (Translacao)";
                     Scalar corTexto = GestoDetectado ? new Scalar(0, 255, 0) : new Scalar(0, 0, 255);
-                    
+
                     Cv2.PutText(frameRoi, textoEstado,
                         new Point(resultado.BoundingRect.X, Math.Max(20, resultado.BoundingRect.Y - 10)),
                         HersheyFonts.HersheySimplex, 0.6, corTexto, 2);
@@ -124,7 +129,7 @@ namespace Aula3D.VisionCore
                     {
                         X = resultado.CenterOfMass.X;
                         Y = resultado.CenterOfMass.Y;
-                        
+
                         // Desenha o centro de massa
                         Cv2.Circle(frameRoi, resultado.CenterOfMass, 6, new Scalar(0, 255, 255), -1);
 
