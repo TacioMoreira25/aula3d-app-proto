@@ -37,6 +37,10 @@ public partial class Objeto3D : Node3D
 	private float _fatorDeSensibilidade = 15.0f;
 
 	private TextureRect _cameraPreview;
+	private PainelAcademico _painelUI;
+
+	[Export]
+	public int CameraIndex { get; set; } = 0;
 
 	// -------------------------------------------------------------------
 	// Godot lifecycle
@@ -65,11 +69,25 @@ public partial class Objeto3D : Node3D
 		}
 
 		_clippingShader = GD.Load<Shader>("res://Shaders/ClippingShader.gdshader");
+		
+		_painelUI = GetNodeOrNull<PainelAcademico>("/root/Main/UIManager");
 
 		// Escolha do provedor: troque GestorDeVisaoFacade por MouseMock para testes sem câmera.
 		var facade = new GestorDeVisaoFacade();
-		facade.Iniciar();
+		facade.Iniciar(CameraIndex);
 		_gestureProvider = facade;
+
+		if (_painelUI != null)
+		{
+			_painelUI.OnSaveAbertaRequested += () => 
+			{
+				if (_gestureProvider is GestorDeVisaoFacade v) v.SalvarAssinaturaAberta();
+			};
+			_painelUI.OnSaveFechadaRequested += () => 
+			{
+				if (_gestureProvider is GestorDeVisaoFacade v) v.SalvarAssinaturaFechada();
+			};
+		}
 
 		GD.Print("Objeto3D: provedor de gestos iniciado.");
 	}
@@ -83,6 +101,17 @@ public partial class Objeto3D : Node3D
 			if (Input.IsActionJustPressed("ui_debug_2") || Input.IsKeyPressed(Key.Key2)) visaoInput.DebugViewIndex = 1;
 			if (Input.IsActionJustPressed("ui_debug_3") || Input.IsKeyPressed(Key.Key3)) visaoInput.DebugViewIndex = 2;
 			if (Input.IsActionJustPressed("ui_debug_4") || Input.IsKeyPressed(Key.Key4)) visaoInput.DebugViewIndex = 3;
+			if (Input.IsActionJustPressed("ui_debug_5") || Input.IsKeyPressed(Key.Key5)) visaoInput.DebugViewIndex = 4;
+			
+			// Atalhos para gravar assinatura
+			if (Input.IsKeyPressed(Key.A)) visaoInput.SalvarAssinaturaAberta();
+			if (Input.IsKeyPressed(Key.F)) visaoInput.SalvarAssinaturaFechada();
+			
+			if (_painelUI != null && visaoInput.UltimosMomentosHu != null)
+			{
+				_painelUI.AtualizarHu(visaoInput.UltimosMomentosHu);
+				_painelUI.AtualizarStatusGesto(visaoInput.GestoDetectado);
+			}
 		}
 
 		// 1. Atualiza o preview da câmera se for GestorDeVisaoFacade

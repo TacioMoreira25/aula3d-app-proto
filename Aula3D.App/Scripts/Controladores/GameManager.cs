@@ -18,9 +18,6 @@ public partial class GameManager : Node
 		if (_painel != null)
 		{
 			_painel.OnLoadLocalRequested   += HandleLoadLocalRequest;
-			_painel.OnAxisValuesChanged    += HandleAxisValuesChanged;
-			_painel.OnPositionValuesChanged += HandlePositionValuesChanged;
-			_painel.OnScaleValuesChanged   += HandleScaleValuesChanged;
 		}
 
 		_fileDialog = new FileDialog
@@ -29,16 +26,13 @@ public partial class GameManager : Node
 			Access         = FileDialog.AccessEnum.Filesystem,
 			Title          = "Carregar Modelo 3D",
 			Filters        = new string[] { "*.glb, *.gltf ; Modelos GLTF" },
-			UseNativeDialog = false
+			UseNativeDialog = true
 		};
 		_fileDialog.FileSelected += OnFileSelected;
 		AddChild(_fileDialog);
 	}
 
 	private void HandleLoadLocalRequest()                       => _fileDialog.PopupCenteredRatio(0.5f);
-	private void HandleAxisValuesChanged(float x, float y, float z)    => _objeto3D?.SetModelRotation(x, y, z);
-	private void HandlePositionValuesChanged(float x, float y, float z) => _objeto3D?.SetModelPosition(x, y, z);
-	private void HandleScaleValuesChanged(float x, float y, float z)   => _objeto3D?.SetModelScale(x, y, z);
 
 	private async void OnFileSelected(string path)
 	{
