@@ -61,18 +61,31 @@ namespace Aula3D.VisionCore
         public byte[]? FrameBuffer { get; private set; }
         public int CurrentFPS { get; private set; }
         public long CurrentRAM { get; private set; }
+        public double[]? UltimosMomentosHu { get; private set; }
         
-        public int DebugViewIndex { get; set; } = 0; // 0 = Original, 1 = FFT, 2 = Mask, 3 = Canny
+        public int DebugViewIndex { get; set; } = 0; // 0 = Original, 1 = FFT, 2 = Mask, 3 = Canny, 4 = Todos
 
+        private int _cameraIndex;
         private CancellationTokenSource? _cts;
         private Task?                    _visionTask;
 
-        public void Iniciar()
+        public void Iniciar(int cameraIndex = 0)
         {
             if (IsRunning) return;
+            _cameraIndex = cameraIndex;
             _cts        = new CancellationTokenSource();
             IsRunning   = true;
             _visionTask = Task.Run(() => LoopDeVisao(_cts.Token), _cts.Token);
+        }
+
+        public void SalvarAssinaturaAberta()
+        {
+            if (UltimosMomentosHu != null) ClassificadorDeGestos.SalvarAssinatura("ABERTA", UltimosMomentosHu);
+        }
+        
+        public void SalvarAssinaturaFechada()
+        {
+            if (UltimosMomentosHu != null) ClassificadorDeGestos.SalvarAssinatura("FECHADA", UltimosMomentosHu);
         }
 
         public void Parar()
@@ -85,7 +98,7 @@ namespace Aula3D.VisionCore
 
         private void LoopDeVisao(CancellationToken token)
         {
-            using var capture  = new VideoCapture(0);
+            using var capture  = new VideoCapture(_cameraIndex);
             using var frame    = new Mat();
             using var filtro   = new FiltroEspacial();
 
@@ -143,6 +156,9 @@ namespace Aula3D.VisionCore
                     var resultado    = new HandTrackingResult { HandDetected = true, Contour = contornoScaleBack };
 
                     ExtratorHu.ExtrairGeometria(contornoScaleBack, resultado);
+                    resultado.HuMoments = ExtratorHu.CalcularMomentosHu(contornoScaleBack);
+                    UltimosMomentosHu = resultado.HuMoments;
+                    
                     ClassificadorDeGestos.Classificar(contornoScaleBack, resultado);
 
                     HandDetected    = resultado.HandDetected;
@@ -190,45 +206,97 @@ namespace Aula3D.VisionCore
                 int textY = 25; // Abaixei um pouco para não cortar
                 Scalar textColor = new Scalar(0, 255, 0); // Verde
 
-                Mat sourceMat;
-                string viewText;
+                if (DebugViewIndex == 4) 
+                {
+                    using Mat m1 = frame.Clone();
+                    using Mat m2 = new Mat();
+                    using Mat m3 = new Mat();
+                    using Mat m4 = new Mat();
 
-                if (DebugViewIndex == 1 && !filtro.MatFFT.Empty())
-                {
-                    sourceMat = filtro.MatFFT;
-                    viewText = "Visualizacao: 2. FFT";
-                }
-                else if (DebugViewIndex == 2 && !filtro.GetMask().Empty())
-                {
-                    sourceMat = filtro.GetMask();
-                    viewText = "Visualizacao: 3. HSV";
-                }
-                else if (DebugViewIndex == 3 && !filtro.MatCanny.Empty())
-                {
-                    sourceMat = filtro.MatCanny;
-                    viewText = "Visualizacao: 4. Canny";
+                    if (!filtro.MatFFT.Empty())
+                        Cv2.Resize(filtro.MatFFT, m2, frame.Size(), 0, 0, InterpolationFlags.Linear);
+                    else
+                    {
+                        m2.Create(frame.Size(), MatType.CV_8UC1);
+                        m2.SetTo(new Scalar(0));
+                    }
+
+                    if (!filtro.GetMask().Empty())
+                        Cv2.Resize(filtro.GetMask(), m3, frame.Size(), 0, 0, InterpolationFlags.Linear);
+                    else
+                    {
+                        m3.Create(frame.Size(), MatType.CV_8UC1);
+                        m3.SetTo(new Scalar(0));
+                    }
+
+                    if (!filtro.MatCanny.Empty())
+                        Cv2.Resize(filtro.MatCanny, m4, frame.Size(), 0, 0, InterpolationFlags.Linear);
+                    else
+                    {
+                        m4.Create(frame.Size(), MatType.CV_8UC1);
+                        m4.SetTo(new Scalar(0));
+                    }
+
+                    if (m2.Channels() == 1) Cv2.CvtColor(m2, m2, ColorConversionCodes.GRAY2BGR);
+                    if (m3.Channels() == 1) Cv2.CvtColor(m3, m3, ColorConversionCodes.GRAY2BGR);
+                    if (m4.Channels() == 1) Cv2.CvtColor(m4, m4, ColorConversionCodes.GRAY2BGR);
+
+                    Cv2.PutText(m1, "1. Real", new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+                    Cv2.PutText(m2, "2. FFT", new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+                    Cv2.PutText(m3, "3. HSV", new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+                    Cv2.PutText(m4, "4. Canny", new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+
+                    using Mat top = new Mat();
+                    using Mat bottom = new Mat();
+                    Cv2.HConcat(new Mat[] { m1, m2 }, top);
+                    Cv2.HConcat(new Mat[] { m3, m4 }, bottom);
+                    using Mat merged = new Mat();
+                    Cv2.VConcat(new Mat[] { top, bottom }, merged);
+
+                    Cv2.Resize(merged, frameToEncode, frame.Size(), 0, 0, InterpolationFlags.Linear);
                 }
                 else 
                 {
-                    sourceMat = frame;
-                    viewText = "Visualizacao: 1. Real";
-                }
+                    Mat sourceMat;
+                    string viewText;
 
-                // Aplica Resize e Color Convert uma uníca vez para a imagem selecionada
-                if (sourceMat.Width != frame.Width || sourceMat.Height != frame.Height)
-                {
-                    Cv2.Resize(sourceMat, debugResized, frame.Size(), 0, 0, InterpolationFlags.Linear);
-                    if (debugResized.Channels() == 1)
-                        Cv2.CvtColor(debugResized, frameToEncode, ColorConversionCodes.GRAY2BGR);
+                    if (DebugViewIndex == 1 && !filtro.MatFFT.Empty())
+                    {
+                        sourceMat = filtro.MatFFT;
+                        viewText = "Visualizacao: 2. FFT";
+                    }
+                    else if (DebugViewIndex == 2 && !filtro.GetMask().Empty())
+                    {
+                        sourceMat = filtro.GetMask();
+                        viewText = "Visualizacao: 3. HSV";
+                    }
+                    else if (DebugViewIndex == 3 && !filtro.MatCanny.Empty())
+                    {
+                        sourceMat = filtro.MatCanny;
+                        viewText = "Visualizacao: 4. Canny";
+                    }
+                    else 
+                    {
+                        sourceMat = frame;
+                        viewText = "Visualizacao: 1. Real";
+                    }
+
+                    // Aplica Resize e Color Convert uma uníca vez para a imagem selecionada
+                    if (sourceMat.Width != frame.Width || sourceMat.Height != frame.Height)
+                    {
+                        Cv2.Resize(sourceMat, debugResized, frame.Size(), 0, 0, InterpolationFlags.Linear);
+                        if (debugResized.Channels() == 1)
+                            Cv2.CvtColor(debugResized, frameToEncode, ColorConversionCodes.GRAY2BGR);
+                        else
+                            debugResized.CopyTo(frameToEncode);
+                    }
                     else
-                        debugResized.CopyTo(frameToEncode);
-                }
-                else
-                {
-                    sourceMat.CopyTo(frameToEncode);
-                }
+                    {
+                        sourceMat.CopyTo(frameToEncode);
+                    }
 
-                Cv2.PutText(frameToEncode, viewText, new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+                    Cv2.PutText(frameToEncode, viewText, new Point(10, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);
+                }
 
                 int rightX = frameToEncode.Width - 110;
                 Cv2.PutText(frameToEncode, $"FPS: {CurrentFPS}", new Point(rightX, textY), HersheyFonts.HersheySimplex, 0.5, textColor, 2);

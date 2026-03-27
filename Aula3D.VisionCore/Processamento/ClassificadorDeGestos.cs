@@ -60,8 +60,27 @@ namespace Aula3D.VisionCore.Processamento
                 (double)Math.Min(resultado.BoundingRect.Height, resultado.BoundingRect.Width);
 
             resultado.DefectPoints = defectPoints.ToArray();
-            resultado.IsHandOpen   = defectCount >= 3 || (defectCount < 3 && aspectRatio > 1.35);
-            resultado.State        = resultado.IsHandOpen ? "ABERTA" : "FECHADA";
+
+            // Usa assinatura se disponível, senão fallback heurístico
+            string? gestoReconhecido = null;
+            if (resultado.HuMoments != null)
+                gestoReconhecido = ReconhecerPorAssinatura(resultado.HuMoments);
+
+            if (gestoReconhecido == "ABERTA")
+            {
+                resultado.IsHandOpen = true;
+                resultado.State = "ABERTA";
+            }
+            else if (gestoReconhecido == "FECHADA")
+            {
+                resultado.IsHandOpen = false;
+                resultado.State = "FECHADA";
+            }
+            else 
+            {
+                resultado.IsHandOpen = defectCount >= 3 || (defectCount < 3 && aspectRatio > 1.35);
+                resultado.State      = resultado.IsHandOpen ? "ABERTA" : "FECHADA";
+            }
         }
 
         /// <summary>

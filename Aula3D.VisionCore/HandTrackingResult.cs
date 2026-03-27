@@ -12,5 +12,6 @@ namespace Aula3D.VisionCore
         public Rect BoundingRect { get; set; }
         public Point[]? Contour { get; set; }
         public Point[]? DefectPoints { get; set; }
+        public double[]? HuMoments { get; set; }
     }
 }

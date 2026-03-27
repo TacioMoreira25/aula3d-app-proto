@@ -15,7 +15,7 @@ namespace Aula3D.VisionConsole
         {
             Console.WriteLine("Iniciando rastreamento de visão...");
             Console.WriteLine("Pressione 'ESC' na janela do vídeo para encerrar.");
-            Console.WriteLine("Pressione '1', '2', '3' ou '4' para trocar as visualizações de debug.");
+            Console.WriteLine("Pressione '1', '2', '3', '4' ou '5' para trocar as visualizações de debug.");
 
             // Instancia e inicia o Facade exatamente como o Objeto3D no Godot faz
             using var facade = new GestorDeVisaoFacade();
@@ -53,6 +53,7 @@ namespace Aula3D.VisionConsole
                 if (key == '2') facade.DebugViewIndex = 1;
                 if (key == '3') facade.DebugViewIndex = 2;
                 if (key == '4') facade.DebugViewIndex = 3;
+                if (key == '5') facade.DebugViewIndex = 4;
             }
 
             Console.WriteLine("\nEncerrando provedor de visão...");
